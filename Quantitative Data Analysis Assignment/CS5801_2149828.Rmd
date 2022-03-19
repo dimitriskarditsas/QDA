@@ -1,0 +1,970 @@
+---
+title: "CS5801 Coursework Template Proforma"
+author: "Dimitrios Karditsas - 2149828"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  word_document: default
+  pdf_document: default
+  html_document:
+    df_print: paged
+version: 1
+---
+
+# 0. Instructions 
+
+ 
+
+```{r}
+#install.packages('tidyverse')
+#install.packages('validate')
+#install.packages('ggpolot2')
+#install.packages('dplyr')
+#install.packages('tidyr')
+#install.packages('corrplot')
+#install.packages('ggpubr')
+library(tidyverse)
+library(validate)
+library(ggplot2)
+library(dplyr)
+library(corrplot)
+library(ggpubr)
+#installed.packages()
+# Add code here to load any required libraries with `library()`.  
+# We suggest you use `install.package()` for any required packages externally to this document 
+# since installation only need be done once.
+```
+# 1. Organise and clean the data
+
+## 1.1 Subset the data into the specific dataset allocated
+ 
+*A description of the data set provided, its contents and which subset you should select is documented in the assessment brief at ???.pdf*  
+*Use R code to correctly select the subset of data allocated. (5 marks)*  
+## 1.2 Data quality analysis
+ 
+*Provide a description of a comprehensive plan to assess the quality of the data, and document your findings.  Include all variables/columns (5 marks) from the data set and provide a full implementation (5 marks).  NB even if no data quality issues are identified you should still check and report.*
+
+ 
+## 1.3 Data cleaning  
+ 
+*Explain any data quality issues found in 1.2 (5 marks), justify and document the responses made (if any) (5 marks).*
+
+
+# 2. Exploratory Data Analysis (EDA)
+
+## 2.1 EDA plan
+
+*Outline a suitable plan to explore, describe and visualise your data. (5 marks)*  
+
+
+
+
+
+## 2.2 EDA and summary of results  
+
+*Undertake and summarise the findings of your data exploration, particularly with respect to the research questions.  Use appropriate summary statistics (uni- and multi-variate) and visualisations. (10 marks)*
+
+
+## 2.3 Additional insights and issues
+
+*Highlight potential further issues or insights uncovered in 2.2.  This might include follow up to findings from your initial EDA.  We accept that the boundary between 2.2 and 2.3 is somewhat arbitrary so use your judgement and maximise good structure and readability. (5 marks)*
+
+
+# 3. Modelling
+
+## 3.1 Build a model for player potential
+
+*Given the research question (i.e., player potential) outline an analysis plan that incorporates/references any findings from the data cleaning (1.3) and EDA (2.2)  (5 marks). Use R to build a suitable model (10 marks).*  
+*NB Submissions where suitable models do not have good fit due to the nature of the data will not be penalised.*  
+
+
+## 3.2 Critique model using relevant diagnostics
+
+*Offer an interpretation of the model characteristics, goodness of fit and graphical diagnostics (5 marks) for the model built in 3.1. Explain any potential weaknesses (5 marks).*
+
+
+## 3.3 Suggest improvements to your model
+
+*Based on the findings in 3.2 articulates possible alternative approaches to address them (5 marks).*
+
+
+# 4. Extension work
+
+## 4.1 Model the likelihood of a player having a weekly wage above 8000 Euro (using the high.wage.ind variable provided).
+
+*Given this second research question (i.e., involving the binary target attribute) provide a plan of analysis based on relevant EDA for this attribute (10 marks). The model is described, explained and critiqued (10 marks).*
+*NB Submissions where suitable models do not have good fit due to the nature of the data will not be penalised.* 
+
+# References  
+
+*Add any references here. NB You can either do this manually or automatically with a `.bib` file (which then must be submitted along with your `.Rmd` file).  See the RMarkdown [documentation](https://bookdown.org/yihui/rmarkdown-cookbook/bibliography.html) for guidance.* (lines 962-965)   
+
+```{r}
+# Assign your student id into the variable SID, for example:
+SID <- 2149828                  # This is an example, replace 2101234 with your actual ID
+SIDoffset <- (SID %% 25) + 1    # Your SID mod 25 + 1
+
+load("CS5801_football_analysis.Rda")
+# Now subset the football data set
+# Pick every 25th observation starting from your offset
+# Put into your data frame named mydf (you can rename it)
+mydf <- football.analysis[seq(from=SIDoffset,to=nrow(football.analysis),by=25),]
+```
+Before starting I have to mention that questions 1,2,3 are answered together and not separately in the code below, because there is interplay between them. After the completion of this, question 4 is answered separately at the last lines of this R Markdown.  By entering my student ID number into the above-mentioned code, I discover that my data frame contains 514 observations and 17 variables.Also, to get a clear picture of the data, I first perform a summary in the original data set, which is the football.analysis, which contains 12849 observations and 17 variables.
+```{r}
+summary(football.analysis)
+dim(football.analysis)
+```
+The following chunk is a summary of my original data set(mydf), which I will leave as it is in order to be able to observe the differences after the code is completed.
+```{r}
+summary(mydf)
+dim(mydf)
+```
+To begin, I use the validator function to validate my data and establish criteria for data cleaning. Previously, I installed the necessary packages and libraries, which include the tidyverse and validator. Below are all the links from which I determined my ranges.
+tallest(https://khelnow.com/football/top-10-tallest-footballers-in-the-world)
+oldest(https://www.oldest.org/sports/soccer-players/)
+youngest(https://www.goal.com/en/news/thirteen-year-old-axel-kei-makes-history-in-us-as-he-becomes/12yzgovx1oq7s17j3gry188vvj)
+fatest(https://www.eplfocus.com/heaviest-footballers/)
+shortest(https://sportsbrowser.net/shortest-football-players/)
+Additional rules: All variables must be greater than zero, the lowest and highest weight and height limits have been specified in the links above, and the ID of the players must be a six-digit number up to 260000, which I determined after viewing the maximum value of the data set football.analysis(max:258870)
+```{r}
+df_rules <- validator(Player_ID= mydf$sofifa_id>=100000 & mydf$sofifa_id<=260000, 
+                          Potential= mydf$potential< 100 & mydf$potential> 0,
+                          Wage= mydf$wage_eur>= 500,
+                          Age= mydf$age< 54 & mydf$age>13,
+                          Height= mydf$height_cm<= 208 &  mydf$height_cm>= 154,
+                          Weight= mydf$weight_kg<= 103 & mydf$weight_kg>= 58,
+                          Pace= mydf$pace< 100 & mydf$pace> 0,
+                          Shooting= mydf$shooting< 100 & mydf$shooting> 0,
+                          Passing= mydf$passing< 100 & mydf$passing> 0,
+                          Dribling= mydf$dribbling< 100 & mydf$dribbling> 0,
+                          Defending= mydf$defending< 100 & mydf$defending> 0,
+                          Physic= mydf$physic< 100 & mydf$physic> 0,
+                          Power_Strength= mydf$power_strength< 100 & mydf$power_strength> 0,
+                          Long_shots= mydf$power_long_shots< 100 & mydf$power_long_shots> 0,
+                          preferred_foot= is.element(preferred_foot,c("Left","Right")))
+                          
+qual.check_incorrect <- confront(mydf,df_rules)
+summary(qual.check_incorrect)
+```
+
+```{r}
+plot(qual.check_incorrect, xlab= 'df_rules')
+```
+After using the validator function, I notice that my data frame has 9 errors that need to be fixed based on my rules.
+
+To begin, I'm generating a new data frame (my_new_df) to which all the subsequent observations and modifications will be checked(for the moment is exactly the same as mydf). Additionally, I'm updating the column titles to make them more aesthetically pleasing and readable. Then, I check if there is any missing value.
+```{r}
+my_new_df <- as.data.frame(cbind(mydf))
+colnames(my_new_df) <- c('Player.ID', 'Potential', 'Wage.eur', 'Age', 'Height.cm', 'Weight.kg', 'Football.Club', 'Preferred.Foot', 'Pace', 'Shooting', 'Passing', 'Dribbling', 'Defending', 'Physic', 'Power.Strength', 'Long.Shots', 'High.Wage.Ind')
+row.names(my_new_df) <- NULL
+paste('The count of missing observations is:',sum(is.na(my_new_df)))
+```
+In the following section, I will simply create a new data frame that contains only the numeric values from my data set.
+```{r}
+my_numeric_df <- data.frame(my_new_df$Potential,
+                            my_new_df$Wage.eur,
+                            my_new_df$Age,
+                            my_new_df$Height.cm,
+                            my_new_df$Weight.kg,
+                            my_new_df$Shooting,
+                            my_new_df$Passing,
+                            my_new_df$Defending,
+                            my_new_df$Physic,
+                            my_new_df$Power.Strength,
+                            my_new_df$Long.Shots,
+                            my_new_df$Pace,
+                            my_new_df$Dribbling)
+colnames(my_numeric_df) <- c('Potential', 'Wage.eur', 'Age', 'Height.cm', 'Weight.kg', 'Shooting', 'Passing', 'Defending', 'Physic', 'Power.Strength', 'Long.Shots', 'Pace', 'Dribbling')
+```
+And check the standard deviations of it.
+
+```{r}
+sapply(my_numeric_df, sd)
+```
+
+After this, I am presenting my new data frame and I am making a summary of it, which helps me understand that there are actions I need to take in order to clean my data.But, in the continue I will create more specific summaries depending on the particular variables, in order my actions to be more understandable.
+```{r}
+my_new_df
+summary(my_new_df)
+dim(my_new_df)
+```
+```{r}
+sapply(my_new_df, class)
+str(my_new_df)
+```
+In the beginning, I'm starting my data cleaning by checking the IDs of the players first. My assumptions are that all IDs should be unique at first and then be made up of six digit numbers. 
+
+```{r}
+summary(my_new_df$Player.ID)
+length(table(my_new_df$Player.ID))
+```
+According to the summary of Player IDs, there is at least one ID that is not a six-digit number. I can deduce this from the minimum value, which is 3281. Fortunately, there is no greater value from a six-digit number(and 260000), and I arrive at this conclusion due to the maximum value of the summary. As a result, no changes are required for the last one. Furthermore, the table length equals 513, which is one less than my observations. This explains that there is one Player ID that is duplicated.
+At first, I am  checking which is the duplicate ID, with the help of the following function from the package of dplyr.(https://stackoverflow.com/questions/31026741/group-by-and-filter-data-management-using-dplyr)
+```{r}
+my_new_df %>%
+  group_by(Player.ID)%>%
+  filter(length(Player.ID)>1)
+```
+I notice that while they have the same ID number, they have completely different data at the rest variables. So, I'm assuming that the error was only in the recording of the ID, and that these are not two people who were counted twice, but two people who one of them ID passed to the system incorrectly.
+That is why I chose to change the one, specifically the second one, which is located in the 161st row of my data set (the number 1 is the column which is the Player IDs). 
+```{r}
+my_new_df[161,1] <- 230293
+```
+I replaced it with this number after searching the football.analysis data frame and determining that the only number missing between 230290 and 230299 (where 230296 is double) is 230293. So, that's why I replaced it like this. As a result, below I run the same code again, and I see that there are not any duplicate IDs anymore in my data frame. (in football.analysis, too).
+```{r}
+my_new_df %>%
+  group_by(Player.ID)%>%
+  filter(length(Player.ID)>1)
+```
+Below, I show the check I did in order to be sure that I did not replace any value that already existed.
+```{r}
+football.analysis %>%
+  group_by(sofifa_id) %>%
+  filter(sofifa_id== 230293)
+
+```
+And here's the proof that I no longer have duplicated Player IDs: the length of the particular table equals my total observations (514).
+```{r}
+my_new_df %>%
+  group_by(Player.ID) %>%
+  filter(Player.ID==230293)
+length(table(my_new_df$Player.ID))
+```
+At this point, I'd like to see which IDs have less than a six-digit number. I'm not going to look to see if there are any numbers higher than six digits (check why, at line 126).The lowest ID number according to football.analysis data frame is 100000, and the highest is 258968. (I verified this from spreadsheet-like display, by using the under pointer symbol in the ID column, which arranges the ID numbers in increasing order).
+So, as you can see below, there is one ID that is a four-digit number and one that is a five-digit number.
+```{r}
+my_new_df %>%
+  group_by(Player.ID)%>%
+  filter(Player.ID<100000)
+```
+At first, I replaced the four-digit number, which is located in the 102 row of my data frame, with the smallest possible value. In this occasion by only adding 1 and then 0 before the four-digit number.
+```{r}
+my_new_df[102,1] <-103281
+```
+In the following, I did the same check as I did in line 221, to be sure this value is unique even in the football.analysis data set.
+```{r}
+football.analysis %>%
+  group_by(sofifa_id) %>%
+  filter(sofifa_id==103281)
+```
+```{r}
+my_new_df %>%
+  group_by(Player.ID) %>%
+  filter(Player.ID==103281)
+```
+So, after seeing that it is obviously unique in my data frame too(my_new_df is a part of football.analysis), I start the same exact process for the 5 digit one, which the lowest possible number that we can add and maintain the rest is by adding a zero in the end. That is 181150
+```{r}
+my_new_df[145,1] <- 181150
+```
+```{r}
+football.analysis %>%
+  group_by(sofifa_id) %>%
+  filter(sofifa_id==181150)
+```
+```{r}
+my_new_df %>%
+  group_by(Player.ID) %>%
+  filter(Player.ID==181150)
+```
+Above I followed the same steps as before, reassuring that my random value is unique. Below there is the proof now that my data set has no duplicate Player IDs anymore.
+```{r}
+my_new_df %>%
+  group_by(Player.ID)%>%
+  filter(length(Player.ID)>1)
+```
+After I've replaced the false IDs, I need to go through the rest of my numerical variables and see if there are any negative values that need to be corrected.
+```{r}
+my_new_df$Player.ID[(my_new_df$Potential<0)] 
+my_new_df$Player.ID[(my_new_df$Wage.eur<0)]
+my_new_df$Player.ID[(my_new_df$Age<0)]
+my_new_df$Player.ID[(my_new_df$Height.cm<0)]
+my_new_df$Player.ID[my_new_df$Weight.kg<0]
+my_new_df$Player.ID[(my_new_df$Pace<0)]
+my_new_df$Player.ID[(my_new_df$Shooting<0)]
+my_new_df$Player.ID[(my_new_df$Passing<0)]
+my_new_df$Player.ID[(my_new_df$Dribbling<0)]
+my_new_df$Player.ID[(my_new_df$Defending<0)]
+my_new_df$Player.ID[(my_new_df$Physic<0)]
+my_new_df$Player.ID[(my_new_df$Power.Strength<0)]
+my_new_df$Player.ID[(my_new_df$Long.Shots<0)]
+```
+And for those whose range must be [0,100], if there is any above it.
+```{r}
+my_new_df$Player.ID[(my_new_df$Potential>100)] 
+my_new_df$Player.ID[(my_new_df$Pace>100)]
+my_new_df$Player.ID[(my_new_df$Shooting>100)]
+my_new_df$Player.ID[(my_new_df$Passing>100)]
+my_new_df$Player.ID[(my_new_df$Dribbling>100)]
+my_new_df$Player.ID[(my_new_df$Defending>100)]
+my_new_df$Player.ID[(my_new_df$Physic>100)]
+my_new_df$Player.ID[(my_new_df$Power.Strength>100)]
+my_new_df$Player.ID[(my_new_df$Long.Shots>100)]
+```
+As I observe there are only two mistakes here that need to be corrected. Pace and dribbling both have from one negative value.
+To begin, I start the EDA with my dependent variable, Potential, because I believe it is the one that is formed as a result of the values of the other variables. Additionally, I will do this because it will aid me in the future with the structure of my model. It is critical to note that I will exclude the wage, the football club and the high wage individual in the modelling. I believe that the wage is determined by the potential and the subsequent high-wage individual. Finally, I suppose that the football club had no input into the creation of the model and has no influence over it.
+So, I begin by checking if the data of the potential is clean.
+## Group 0 (Potential)
+```{r}
+summary(my_new_df$Potential)
+table(my_new_df$Potential) # no need for cleaning. Everything seems correct
+```
+Below I create a histogram of the potential, illustrating the density too.
+```{r}
+ggplot(my_new_df, aes(x = Potential)) +geom_histogram(aes(y= ..density..),bins = 30, color= 'black', fill='green') + geom_density(alpha= 0.5, fill= 'yellow') + ggtitle('Histogram of Potential')
+
+```
+In the continue, I start to clean the Pace and Dribbling. As I notice from the line 288 above, both of them have negative values, which this is incorrect.
+## Group 1 (Pace and Dribbling) -> abs
+```{r}
+summary(my_new_df$Pace)
+table(my_new_df$Pace)#needs correction
+```
+```{r}
+summary(my_new_df$Dribbling)
+table(my_new_df$Dribbling) #needs correction
+```
+Clearly the negative values cause issues to the structure of the graphs.
+So, following the presentation of these errors, I am assuming that these negative values were written by mistake and that the correct ones that should be are the exact opposite, that is, their positive values. I achieve this transformation with the use of abs function.
+(https://www.tutorialgateway.org/r-abs-function/)
+
+```{r}
+my_new_df$Pace.abs <- abs(my_new_df$Pace)
+summary(my_new_df$Pace.abs)
+table(my_new_df$Pace.abs)
+```
+```{r}
+my_new_df$Dribbling.abs <- abs(my_new_df$Dribbling)
+summary(my_new_df$Dribbling.abs)
+table(my_new_df$Dribbling.abs)
+```
+Below, the histograms of pace and dribbling illustrating with their densities, and the separate plots comparing with my response variable, the potential.
+```{r}
+ggplot(data = my_new_df, aes(x = Pace.abs)) + geom_histogram(aes(y= ..density..),bins = 30, color= 'black' , fill= 'blue') + geom_density(alpha= 0.5, fill = 'orange') + ggtitle('Histogram of Pace.abs')
+ggplot(data = my_new_df, aes(x = Dribbling.abs)) + geom_histogram(aes(y=..density..),bins = 30, color= 'black', fill= 'red') + geom_density(alpha= 0.5, fill= 'purple') + ggtitle('Histogram of Dribbling.abs')
+plot(my_new_df$Pace.abs, my_new_df$Potential, xlab='Pace.abs', ylab='Potential', main = 'Pace.abs vs Potential')
+plot(my_new_df$Dribbling.abs, my_new_df$Potential, xlab='Dribbling.abs', ylab='Potential', main = 'Dribbling.abs vs Potential')
+```
+After the presentation of the graphs, I check the correlation of the explanatory variables with the potential. As I see below there is a correlation but not something extraordinary, with the dribbling more correlated with the potential rather than pace.
+```{r}
+cor(my_new_df$Potential, my_new_df$Pace.abs)
+cor(my_new_df$Potential, my_new_df$Dribbling.abs)
+```
+Below, I am doing separate anova tests to check if there is any significance. As we can see from the summaries below, both p-values are below 0.05, so we can reject the null hypothesis, the values are significant, but the r-squared are not so high(below 0.5). The r-squared are not so high because as we can see from the cor.tests above, pace and dribbling are not so correlated with potential respectively. (NB in each equation y is the output(Potential) and x is the input in each occasion) 
+##Equation(Pace.abs/Potential): 
+ $y=57.98913 + 0.20060 \times x$
+```{r}
+Pace.abs.lm <- lm(my_new_df$Potential~my_new_df$Pace.abs)
+summary(Pace.abs.lm)
+plot(Pace.abs.lm)
+```
+##Equation(Dribbling.abs/Potential):
+$y=52.91712 + 0.29656 \times x$
+```{r}
+Dribbling.abs.lm <- lm(my_new_df$Potential~my_new_df$Dribbling.abs)
+summary(Dribbling.abs.lm)
+plot(Dribbling.abs.lm)
+```
+By applying the abs function, I added two new columns, the Pace.abs and the Dribbling.abs, that's why I need to delete the old ones, as I do below.
+
+```{r}
+my_new_df = subset(my_new_df, select = -c(Pace, Dribbling))
+my_new_df
+```
+As I noticed from the validator function before, Age and Wage had errors. So I am going to check them and replace them below.
+## Group 2(Wage and Age)
+```{r}
+summary(my_new_df$Wage.eur)
+table(my_new_df$Wage.eur)   # 4.0001$ is very small
+```
+```{r}
+summary(my_new_df$Age)
+table(my_new_df$Age) #79 years old is too old to play football
+```
+
+
+First, we find the false value
+```{r}
+my_new_df %>%
+  group_by(Age) %>%
+  filter(Age > 54)
+```
+As, we notice, a 79  years old professional football player doesn't seem realistic. So, in the beginning, I collect all the players with stats close to the ones of the 79 year old player.
+
+```{r}
+false_age <- my_new_df %>%
+  group_by(Age)%>%
+  filter(Potential>= 60) %>%
+  filter(Wage.eur>= 2000) %>%
+  filter(Height.cm>=170) %>%
+  filter(Weight.kg>=60) %>%
+  filter(Shooting>=60) %>%
+  filter(Passing>=60) %>%
+  filter(Defending>=30) %>%
+  filter(Physic>=50) %>%
+  filter(Power.Strength>=60) %>%
+  filter(Long.Shots>=50) %>%
+  filter(Pace.abs>=70) %>%
+  filter(Dribbling.abs>=70)
+```
+
+After, I exclude him and I create a summary of the rest.
+
+```{r}
+corrected_age <-data.frame(false_age[c(-38),])
+summary(corrected_age$Age)
+``` 
+By this implementation, I am now confident to replace his age with 27(median), because approximately from my data, a player with such kind of stats is about 27 years old.
+```{r}
+my_new_df$Age[my_new_df$Age==79] <- 27
+```
+Below are the new and corrected stats of my player.
+```{r}
+my_new_df%>%
+  group_by(Player.ID) %>%
+  filter(Player.ID ==200735)
+```
+No I am checking about the values of the wage
+```{r}
+my_new_df %>%
+  group_by(Wage.eur)%>%
+  filter(Wage.eur<500)
+```
+I am following the same procedure for the wage too.
+```{r}
+false_wage <- my_new_df %>%
+  group_by(Wage.eur)%>%
+  filter(Potential<= 72) %>%
+  filter(Age>= 25) %>%
+  filter(Shooting>=60) %>%
+  filter(Passing>=60) %>%
+  filter(Defending>=20) %>%
+  filter(Physic>=50) %>%
+  filter(Power.Strength>=40) %>%
+  filter(Long.Shots>=60) %>%
+  filter(Pace.abs>=75) %>%
+  filter(Dribbling.abs>=65)
+false_wage
+```
+```{r}
+corrected_wage <-data.frame(false_wage[c(-5),])
+summary(corrected_wage$Wage.eur)
+```
+My conclusion is that a player with such stats, his approximate wage in euros should be the median, i.e 3500
+```{r}
+my_new_df$Wage.eur[my_new_df$Wage.eur==4.0001] <- 3500
+```
+```{r}
+my_new_df %>%
+  group_by(Player.ID)%>%
+  filter(Player.ID==222163)
+```
+Below are the new corrected summaries, tables and graphs for wage and age.
+```{r}
+summary(my_new_df$Wage.eur)
+table(my_new_df$Wage.eur)   #corrected
+```
+```{r}
+summary(my_new_df$Age)
+table(my_new_df$Age) #corrected
+```
+Below the histograms of wage and age. The histogram of wage is illustrated like this because of the big amount of values(the program uses the e). I am not assuming this as a problem. Also, I don't create a plot and an anova test in the continue with wage because as I said in line 302, I do not assume wage as a variable that affects potential, but on the contrary is a result of it. So, below you  see the plot and later the anova test of potential and age.
+```{r}
+ggplot(data = my_new_df, aes(x = Wage.eur)) + geom_histogram(bins = 30) +ggtitle('Histogram of Wage')
+ggplot(data = my_new_df, aes(x = Age)) + geom_histogram(aes(y=..density..),bins = 30, color= 'black', fill= 'red') + geom_density(alpha= 0.5, fill= 'purple') + ggtitle('Histogram of Age')
+plot(my_new_df$Age, my_new_df$Potential, xlab='Age', ylab= 'Potential', main= 'Potential vs Age')
+```
+```{r}
+cor(my_new_df$Age, my_new_df$Potential)
+```
+As we see above, there is a slight negative correlation between potential and age. Additionally, as we see below, the p-value is below 0.05, so we can reject the null hypothesis, the values are significant, but the r-square is not so high(below 0.5), because there is no big correlation with potential and age. 
+##Equation(Age/Potential):
+$y=81.43879-0.39323\times x$
+```{r}
+age.lm <- lm(my_new_df$Potential~my_new_df$Age)
+summary(age.lm)
+plot(age.lm)
+```
+## Group 3 (Height and Weight)
+From the summary of the height below, we notice that there is a player too tall for the professional football standards.
+```{r}
+summary(my_new_df$Height.cm)
+table(my_new_df$Height.cm) # needs correction
+```
+In parallel with the previous, from the summary of the weight we notice that there is one overweight player (=178kg).
+```{r}
+summary(my_new_df$Weight.kg)
+table(my_new_df$Weight.kg) #needs correction
+```
+So I find first the one who is very tall. 
+```{r}
+my_new_df %>%
+  group_by(Height.cm) %>%
+  filter(Height.cm > 208)
+```
+His weight is 59kg. So, I will collect data from players weighing 59kg in order to calculate their average height and replace the incorrect value with it.
+```{r}
+false_height <- my_new_df %>%
+  group_by(Weight.kg) %>%
+  filter(Weight.kg == 59)
+false_height
+```
+I exclude the wrong value from the above list.
+```{r}
+corrected_height <-data.frame(false_height[c(-3),])
+summary(corrected_height$Height.cm)
+```
+As i see from the summary above, the average height of a 59kg football player is 167cm. So, I replace it.
+```{r}
+my_new_df$Height.cm[my_new_df$Height.cm==215] <- 167
+```
+Below I see the new stats of my player.
+
+```{r}
+my_new_df %>%
+  group_by(Player.ID) %>%
+  filter(Player.ID == 255344)
+```
+Regarding the weight, I start by checking the limit of 104kg
+```{r}
+my_new_df %>%
+  group_by(Weight.kg) %>%
+  filter(Weight.kg > 104)
+```
+The similar as before, I find the players with the same height in order to calculate their average. 
+```{r}
+my_new_df %>%
+  group_by(Height.cm) %>%
+  filter(Height.cm == 182)
+```
+The 14th row of the data set above is the overweight player, so I exclude it.
+```{r}
+false_weight <- data.frame(my_new_df[my_new_df$Height.cm==182,6])
+weight_182cm<-data.frame(false_weight[c(-14),])
+summary(weight_182cm)
+```
+So the average weight of 182cm tall players is 75 and I replace it.
+```{r}
+my_new_df$Weight.kg[my_new_df$Weight.kg==  178] <- 75
+```
+```{r}
+my_new_df %>% 
+  group_by(Player.ID) %>%
+  filter(Player.ID==209835)
+```
+```{r}
+summary(my_new_df$Height.cm)
+table(my_new_df$Height.cm) # corrected
+```
+```{r}
+summary(my_new_df$Weight.kg)
+table(my_new_df$Weight.kg) #corrected
+```
+Below as usual, I create the histograms of my explanatory variables with their densities, a boxplot between them, and the plots with the potential.
+```{r}
+ggplot(data = my_new_df, aes(x = Height.cm)) + geom_histogram(aes(y=..density..),bins = 30, color= 'black', fill= 'blue') + geom_density(alpha=0.5, fill= 'red') + ggtitle('Histogram of Height')
+ggplot(data = my_new_df, aes(x = Weight.kg)) + geom_histogram(aes(y=..density..),bins = 30, color= 'black', fill= 'purple') + geom_density(alpha=0.5, fill= 'red') + ggtitle('Histogram of Weight')
+ggplot(my_new_df, aes(x= Weight.kg, y= Height.cm)) + geom_boxplot(fill= 'red', alpha= 0.5) + ggtitle('Boxplot of Height and Weight')
+plot(my_new_df$Height.cm, my_new_df$Potential, xlab='Height', ylab= 'Potential', main='Potential vs Height')
+plot(my_new_df$Weight.kg, my_new_df$Potential, xlab='Weight', ylab= 'Potential', main='Potential vs Weight')
+```
+```{r}
+cor(my_new_df$Height.cm, my_new_df$Weight.kg)
+cor(my_new_df$Potential,my_new_df$Height.cm)
+cor(my_new_df$Potential,my_new_df$Weight.kg)
+
+```
+We can notice that after our implementations the correlation between height and weight is high(that is the reason we replace the values before assuming the weight and height respectively), but regarding the potential, both of them are very close to zero. 
+In the continue, I am doing my anova tests, and I notice that both of them have big p-values(above 0.05). So, we cannot either reject the null hypothesis here and create a equation .
+```{r}
+weight.lm <- lm(my_new_df$Potential~my_new_df$Weight.kg)
+summary(weight.lm)
+plot(weight.lm)
+```
+```{r}
+height.lm <- lm(my_new_df$Potential~my_new_df$Height.cm)
+summary(height.lm)
+plot(height.lm)
+```
+
+In the continue, I am checking the categorical variables of my data frame, which are the names of the football clubs and the preferred foot of the player.
+## Group 4 (Football club and Prefered Foot[Characters])
+```{r}
+summary(my_new_df$Football.Club)
+```
+With the length of the table we get the result of in how many teams are the players play. The addmargins function reassures me that there is no player that belongs in two teams together, as long as the sum is 514. 
+```{r}
+addmargins(table(my_new_df$Football.Club))
+length(table(my_new_df$Football.Club))
+```
+So, there are 322 teams in total and no player has been assumed in two teams or more on the same time(Sum 514).By the three functions below, I find which football club has the most players and its probability.
+```{r}
+prop.table(table(my_new_df$Football.Club))
+max(prop.table(table(my_new_df$Football.Club)))
+```
+Fenerbahce SK is the team with the most players in my data frame with 0,11% percentage of my data set.
+```{r}
+which.max(prop.table(table(my_new_df$Football.Club)))
+```
+From the two functions below we can see clearly the names of the football clubs
+```{r}
+str(my_new_df$Football.Club)
+```
+```{r}
+my_new_df$Football.Club
+```
+The bar below does not look very good, but I can reassure you from my findings above that the longest line of the graph is Fenerbahce SK
+```{r}
+ggplot(my_new_df, aes(x= Football.Club)) + geom_bar()+ coord_flip()
+```
+Below I want to check if everything is fine with the preferred foot of the players
+```{r}
+summary(my_new_df$Preferred.Foot)
+length(table(my_new_df$Preferred.Foot))
+table(my_new_df$Preferred.Foot) #needs correction
+```
+As I observe from the length of the table and the table, I have a player which is right footed but the spelling is wrong, and that's why it included him as separate category. 
+Then, with the first function below, I resolve the issue, and analyze it.
+```{r}
+my_new_df$Preferred.Foot[my_new_df$Preferred.Foot=='right'] <- 'Right'
+summary(my_new_df$Preferred.Foot)
+length(table(my_new_df$Preferred.Foot))
+table(my_new_df$Preferred.Foot) #solved
+```
+The correct plots.
+```{r}
+ggplot(my_new_df, aes(x= Preferred.Foot)) + geom_bar(color= 'black', fill= 'orange') + ggtitle('Barplot for Preffered Foot of Players')
+ggplot(my_new_df, aes(x= Preferred.Foot, y= Potential)) + geom_boxplot(fill= 'red', alpha= 0.5) + ggtitle('Boxplot of Potential and Preferred Foot')
+```
+Now, I am doing my ancova test as long my explanatory variable is categorical. I will not do any test with the football club as I explained it in line 302. As we see from the summary below we accept the null hypothesis from the  fact that the p-value is bigger than 0.05. So, the equation does not exist.
+```{r}
+preffered.foot.lm <- lm(my_new_df$Potential~my_new_df$Preferred.Foot)
+summary(preffered.foot.lm)
+plot(preffered.foot.lm)
+```
+
+To continue, I check the next two variables which don't need any correction.
+## Group 5 (Physic and Passing)
+```{r}
+summary(my_new_df$Physic)
+table(my_new_df$Physic) #ok
+```
+```{r}
+summary(my_new_df$Passing)
+table(my_new_df$Passing) #ok
+```
+As usual, I am creating their histograms, illustrating with their densities and I plot them with the potential separately. 
+```{r}
+ggplot(my_new_df, aes(x = Physic)) + geom_histogram(aes(y= ..density..), bins = 30, color= 'black', fill= 'green') + geom_density(alpha= 0.5, fill= 'yellow') + ggtitle('Histogram of Physic')
+ggplot(data = my_new_df, aes(x = Passing)) + geom_histogram(aes(y= ..density..),bins = 30, color= 'black', fill='orange') + geom_density(alpha= 0.5, fill= 'white') + ggtitle('Histogram of Passing')
+plot(my_new_df$Physic, my_new_df$Potential, xlab=' Physic', ylab= 'Potential', main= 'Physic vs Potential')
+plot(my_new_df$Passing, my_new_df$Potential, xlab= 'Passing', ylab=' Potential', main= 'Passing vs Potential')
+```
+As we notice they have a small correlation with the potential.
+```{r}
+cor(my_new_df$Physic, my_new_df$Potential)
+cor(my_new_df$Passing, my_new_df$Potential)
+```
+From the anova tests we understand that we can reject the null hypothesis as long as the p-value<0.05, the F-statistic is more than 1,there is significance between them, but the R-squared(as the correlation) isn't that big. 
+##Equation(Phsysic/Potential):
+$y=65.71855 + 0.08720\times x$
+```{r}
+physic.lm <- lm(my_new_df$Potential~my_new_df$Physic)
+summary(physic.lm)
+plot(physic.lm)
+```
+##Equation(Passing/Potential): 
+$y=55.90460  +0.27063\times x$
+```{r}
+passing.lm <- lm(my_new_df$Potential~my_new_df$Passing)
+summary(passing.lm)
+plot(passing.lm)
+```
+
+We can reject the null hypothesis, the values are significant and correlated.
+
+
+
+Shooting and Long shots are both variables which don't need any correction.
+## Group 6 (Shooting and Long shots)
+```{r}
+summary(my_new_df$Shooting)
+table(my_new_df$Shooting)#ok
+```
+```{r}
+summary(my_new_df$Long.Shots)
+table(my_new_df$Long.Shots) #ok
+```
+The first two graphs are like the previous ones. In the third point graph, I decided to compare the correlation of shooting and long shots via the preferred foot of each player. The last two graphs are the plots with the potential.
+```{r}
+ggplot(data = my_new_df, aes(x = Shooting)) + geom_histogram(aes(y=..density..), bins = 30, color= 'black', fill= 'blue') + geom_density(alpha= 0.5, fill= 'pink') + ggtitle('Histogram of Shooting')
+ggplot(data = my_new_df, aes(x = Long.Shots)) + geom_histogram(aes(y=..density..), bins = 30, color= 'black', fill= 'red') + geom_density(alpha= 0.5, fill= 'brown') + ggtitle('Histogram of Longshots')
+ggplot(my_new_df, aes(Long.Shots, Shooting, colour= Preferred.Foot)) + geom_point() +geom_smooth(method = 'loess') + facet_wrap(~my_new_df$Preferred.Foot) +theme_bw() + theme_minimal()
+plot(my_new_df$Shooting,my_new_df$Potential, xlab=' Shhoting', ylab= 'Potential', main= 'Shooting vs Potential')
+plot(my_new_df$Long.Shots, xlab=' Long Shots', ylab= 'Potential', main= 'Long Shots vs Potential')
+```
+And the correlation of the explanatory variables is almost perfect(near 1) and each of them has approximately the same not so strong correlation with potential. 
+```{r}
+cor(my_new_df$Long.Shots, my_new_df$Shooting)
+cor(my_new_df$Potential, my_new_df$Shooting)
+cor(my_new_df$Potential, my_new_df$Long.Shots)
+```
+The variables are significant, the p-value is less than 0.05, so we can reject the null hypothesis.
+##Equation(Shooting/Potential): 
+$y=62.99704+ 0.16071\times x$
+```{r}
+shooting.lm <- lm(my_new_df$Potential~my_new_df$Shooting)
+summary(shooting.lm)
+plot(shooting.lm)
+```
+##Equation(Long Shots/Potential): 
+$y=64.67544 +0.13092\times x$
+```{r}
+long.shots.lm <- lm(my_new_df$Potential~my_new_df$Long.Shots)
+summary(long.shots.lm)
+plot(long.shots.lm)
+```
+
+The same process, I follow for the next two clean variables.
+## Group 7 (Power Strength and Defending)
+```{r}
+summary(my_new_df$Power.Strength)
+table(my_new_df$Power.Strength) #ok
+```
+```{r}
+summary(my_new_df$Defending)
+table(my_new_df$Defending)
+```
+```{r}
+ggplot(data = my_new_df, aes(x = Power.Strength)) + geom_histogram(aes(y= ..density..),bins = 30, color= 'black', fill='green') + geom_density(alpha= 0.5, fill= 'yellow') + ggtitle('Histogram of Power Strength')
+ggplot(data = my_new_df, aes(x = Defending)) + geom_histogram(aes(y= ..density..),bins = 30, color= 'black', fill='brown') + geom_density(alpha= 0.5, fill= 'green') + ggtitle('Histogram of Defending')
+ggplot(my_new_df, aes(x= Power.Strength, y= Defending)) + geom_boxplot(fill= 'blue', alpha= 0.5, notch = TRUE) + ggtitle('Boxplot of Power Strength and Defending')
+plot(my_new_df$Power.Strength, my_new_df$Potential, xlab= 'Power Strength', ylab= 'Potential', main= ' Power Strength vs Potential')
+plot(my_new_df$Defending, my_new_df$Potential, xlab= 'Defending', ylab= 'Potential', main= ' Defending vs Potential')
+```
+Again there is not such strong correlations with my response variable.
+```{r}
+cor(my_new_df$Power.Strength, my_new_df$Potential)
+cor(my_new_df$Defending, my_new_df$Potential)
+```
+Below, we notice that on the one hand the p-value of the power strength is bigger than 0.05, so we accept the null hypothesis for it(no equation), and on the other hand the p-value of long shots is less than 0.05 so we reject the null hypothesis and there is significance. 
+```{r}
+power.strength.lm <- lm(my_new_df$Potential~my_new_df$Power.Strength)
+summary(power.strength.lm)
+plot(power.strength.lm)
+```
+##Equation(Defending/Potential):
+$y=69.00056 +0.04553\times x$
+```{r}
+defending.lm <- lm(my_new_df$Potential~my_new_df$Defending)
+summary(defending.lm)
+plot(defending.lm)
+```
+To continue, the High Wage individual is a binary variable and as I observe it doesn't need any correction (360+154=514).
+## Group 8 (High Wage Ind.)
+```{r}
+summary(my_new_df$High.Wage.Ind)
+table(my_new_df$High.Wage.Ind) #ok
+```
+Below, the illustration of a barplot that helps us see which are above the specific limit and which are not(High Wage Ind.=0, when Wage.eur<8000 and the contrary). I won't plot it with potential  neither make any test, as I explained at line 302.
+```{r}
+ggplot(data = my_new_df, aes(x = High.Wage.Ind, y= Wage.eur)) + geom_col(fill= 'blue') + ggtitle('Barplot between High Wage Ind. and Wages')
+```
+Now after finishing with a EDA, I am in a position to do a final check of my data frame, using the same exactly rules I set in line 120, with the only difference, instead of using mydf which is my original data frame, I use my_new_df which the data frame where I did my changes.
+## Validation
+```{r}
+new_df_rules <- validator(Player_ID= my_new_df$Player.ID>=100000 & my_new_df$Player.ID<=260000, 
+                          Potential= my_new_df$Potential< 100 & my_new_df$Potential> 0,
+                          Wage= my_new_df$Wage.eur>= 500,
+                          Age= my_new_df$Age< 54 & my_new_df$Age
+                          >13,
+                          Height= my_new_df$Height.cm<= 208 &  my_new_df$Height.cm>= 154,
+                          Weight= my_new_df$Weight.kg<= 103 & my_new_df$Weight.kg>= 58,
+                          Pace= my_new_df$Pace.abs< 100 & my_new_df$Pace.abs> 0,
+                          Shooting= my_new_df$Shooting< 100 & my_new_df$Shooting> 0,
+                          Passing= my_new_df$Passing< 100 & my_new_df$Passing> 0,
+                          Dribling= my_new_df$Dribbling.abs< 100 & my_new_df$Dribbling.abs> 0,
+                          Defending= my_new_df$Defending< 100 & my_new_df$Defending> 0,
+                          Physic= my_new_df$Physic< 100 & my_new_df$Physic> 0,
+                          Power_Strength= my_new_df$Power.Strength< 100 & my_new_df$Power.Strength> 0,
+                          Long_shots= my_new_df$Long.Shots< 100 & my_new_df$Long.Shots> 0,
+                          Preferred.Foot= is.element(Preferred.Foot,c("Left","Right")))
+qual.check <- confront(my_new_df,new_df_rules)
+summary(qual.check)                      
+```
+```{r}
+plot(qual.check, xlab= 'new_df_rules')
+```
+As we see, I have achieved to have a clean data set.
+I am creating again the numeric data frame to be clean as well.
+```{r}
+my_new_numeric_df <- data.frame(my_new_df$Potential,
+                            my_new_df$Wage.eur,
+                            my_new_df$Age,
+                            my_new_df$Height.cm,
+                            my_new_df$Weight.kg,
+                            my_new_df$Shooting,
+                            my_new_df$Passing,
+                            my_new_df$Defending,
+                            my_new_df$Physic,
+                            my_new_df$Power.Strength,
+                            my_new_df$Long.Shots,
+                            my_new_df$Pace.abs,
+                            my_new_df$Dribbling.abs)
+colnames(my_new_numeric_df) <- c('Potential', 'Wage.eur', 'Age', 'Height.cm', 'Weight.kg', 'Shooting', 'Passing', 'Defending', 'Physic', 'Power.Strength', 'Long.Shots', 'Pace.abs', 'Dribbling.abs')
+my_new_numeric_df
+```
+```{r}
+summary(my_new_numeric_df)
+```
+```{r}
+sapply(my_new_numeric_df, sd)
+```
+I am using the pairs and corrplot function to present the correlation of numeric values with each other.
+```{r}
+pairs(my_numeric_df)
+```
+```{r}
+corr_mat <- cor(my_new_numeric_df)
+corr_mat
+corrplot(corr_mat)
+```
+#Total modelling
+After finishing data cleaning, EDA, and comparing the significance of my inputs and output (Potential), I am able to run my final ancova tests to show my model's final equations.
+I remind that Player ID, Wage,High Wage Ind. and Football club are excluded from the ancova tests as I explained before.
+For the rest, below I run the necessary ancova test to create the model. Firstly, I don't consider what I found before separately with each variable in order to have a more general view for the model.
+```{r}
+Total.lm <- lm(Potential~Age+Height.cm+Weight.kg+Preferred.Foot+Shooting+Passing+Defending+Physic+Power.Strength+Long.Shots+Pace.abs+Dribbling.abs, data = my_new_df)
+summary(Total.lm)
+```
+```{r}
+Total.step.lm <- step(Total.lm)
+summary(Total.step.lm)
+```
+After the completion of the step function, I reject the null hypothesis as long as the p=value is less than 0.05. Also, the R-square is 0.6469, that means that the model is accurate approximately 64% when the information will be given. Age can affect the most our model and Pace and Dribbling the least. From the results I observe that the  coefficients are a little different from the ones I did before one by one separately. For example, according to the formula above, height is significant, but if we look back at line 575, we had accepted the null hypothesis. That observation does not mean that something is wrong but shows that there are inputs that are highly correlated with other inputs except from the correlation with the output(for this occasion the height with potential). The same in the opposite way with the passing which is not considered significant here, because it does not affect strongly the whole model but on the other hand has correlation and is significant by itself with the output.
+Below, there is the multi-regression equation, and then its plot, which visualizes the errors and their distances and the normal qq.
+##Multi-reggresion Equation:
+$y=17.23748-0.78510\times Age +0.18214\times Height.cm +0.27040\times Shooting +0.17583\times Defending+ 0.06550\times Physic -0.14655\times Long.Shots +0.04675\times Pace.abs +0.04675\times Dribbling.abs$
+```{r}
+plot(Total.step.lm)
+```
+Now I will create a model considering the values that passed my tests separately with my output(their p-values were below 0.05) and then I will compare it with the model I did just before(Total.lm)
+```{r}
+Significant.lm <- lm(Potential~Age+Shooting+Passing+Defending+Physic+Long.Shots+Pace.abs+Dribbling.abs, data = my_new_df)
+summary(Significant.lm)
+```
+```{r}
+Significant.step.lm <- step(Significant.lm)
+summary(Significant.step.lm)
+```
+After the completion of the step function, we reject the null hypothesis as well, and we notice that the r-squared is slightly lower (0.6242 or 62%) from the one of the previous model. That means that this model is slightly less accurate from the model which included all the variables, but in my personal opinion I would choose this model (Significant.step.lm), because on the occasion of new values inserted in the data frame, the probability of lower amount of mistakes is better from the moment that we will use less variables for our model and their accuracy's difference is approximately only 2%. Additionally as I observe the variable that plays the biggest role in the change of my model is the Age, which I consider it as logical result, and the least is Dribbling. So, my preferred equation of the model is listed below. 
+##Significant equation:
+$y=51.32939-0.85016\times Age + 0.27525\times Shooting + 0.16414\times Defending+ 0.14238\times Physic-0.15718\times Long.Shots +0.27944\times Dribbling.abs$
+```{r}
+plot(Significant.step.lm)
+```
+Here is the proof of what I explained before by comparing the equations. Each of them has the depended variable(potential) and the first one needs 6 more inputs to be accurate for modelling with approximately 64% accuracy, and the second one needs 4 more inputs to be accurate for modelling with approximately 62% accuracy. So, in case of adding new values that may have mistakes I would choose to use the significant model rather than total one.
+###Compare
+Multi-reggresion Equation:
+$y=17.23748-0.78510\times Age +0.18214\times Height.cm +0.27040\times Shooting +0.17583\times Defending+ 0.06550\times Physic -0.14655\times Long.Shots +0.04675\times Pace.abs +0.04675\times Dribbling.abs$
+##Significant equation:
+$y=51.32939-0.85016\times Age + 0.27525\times Shooting + 0.16414\times Defending+ 0.14238\times Physic-0.15718\times Long.Shots +0.27944\times Dribbling.abs$
+
+
+
+To finish with the EDA part totally, I present below a variety of trees that helps me understand which variables are depending more with each other. The boards below illustrate this type of correlation. I achieve these implementations with the use of corrplot and ggpubr packages and libraries.
+Furthermore, the trees assist in the completion of answering questions 2.3 and 3.3. Regarding the additional insights and issues, trees prove why the regression, in the plots I illustrated above between each explanatory variable and the response variable(Potential), is not so linear. This happens, as trees prove, because except from the correlation between each input with the output, there is correlation between the inputs by themselves. For similar reasons, regarding the question 3.3, an improvement in my model would be, instead of modeling each independent variable with the dependent one and then take the inputs which were significant and had p-value<0.05 as presented in this project, to first create separate models with the inputs that the trees provide me and the potential as output. Then, create a general model based on these assumptions. Finally, another improvement could be to model only the inputs that are provided by the Potential.tree with the potential. Both these improvements could achieve more accuracy by having higher R-squared than the 0,64 and 0,62 that I found.
+
+```{r}
+library(tree)
+```
+#Tree 1
+```{r}
+Potential.tree <- tree(my_new_numeric_df$Potential~., data = my_new_numeric_df)
+plot(Potential.tree)
+text(Potential.tree)
+```
+# Tree 2
+```{r}
+Height.tree <- tree(my_new_numeric_df$Height.cm~., data = my_new_numeric_df)
+plot(Height.tree)
+text(Height.tree)
+```
+# Tree 3
+```{r}
+Shooting.tree <- tree(my_new_numeric_df$Shooting~., data = my_new_numeric_df)
+plot(Shooting.tree)
+text(Shooting.tree)
+```
+# Tree 4
+```{r}
+Passing.tree <- tree(my_new_numeric_df$Passing~., data = my_new_numeric_df)
+plot(Passing.tree)
+text(Passing.tree)
+```
+#Tree 5
+```{r}
+Defending.tree <- tree(my_new_numeric_df$Defending~., data = my_new_numeric_df)
+plot(Defending.tree)
+text(Defending.tree)
+```
+#Tree 6
+```{r}
+Physic.tree <- tree(my_new_numeric_df$Physic~., data = my_new_numeric_df)
+plot(Physic.tree)
+text(Physic.tree)
+```
+#Tree 7
+```{r}
+Pace.abs.tree <- tree(my_new_numeric_df$Pace.abs~., data = my_new_numeric_df)
+plot(Pace.abs.tree)
+text(Pace.abs.tree)
+```
+#Tree 8
+```{r}
+Power.Strength.tree <- tree(my_new_numeric_df$Power.Strength~., data = my_new_numeric_df)
+plot(Power.Strength.tree)
+text(Power.Strength.tree)
+```
+# Tree 9
+```{r}
+Long.Shots.tree <- tree(my_new_numeric_df$Long.Shots~., data = my_new_numeric_df)
+plot(Long.Shots.tree)
+text(Long.Shots.tree)
+```
+#Tree 10
+```{r}
+Dribbling.abs.tree <- tree(my_new_numeric_df$Dribbling.abs~., data = my_new_numeric_df)
+plot(Dribbling.abs.tree)
+text(Dribbling.abs.tree)
+```
+##4
+For answering the question 4, we take as our output the High wage individual and our inputs all our variables except the wage because is a subsequent of our output and the Football clubs because our equation will be way too complicated because it will consider each club separately. I will  use the glm function because the output is binary.
+```{r}
+High.Wage.Ind.lr<-glm(my_new_df$High.Wage.Ind~Potential+Age+Height.cm+Weight.kg+Preferred.Foot+Shooting+Passing+Defending+Physic+Power.Strength+Long.Shots+Pace.abs+Dribbling.abs, data = my_new_df,family = binomial)
+summary(High.Wage.Ind.lr)
+```
+```{r}
+High.Wage.Ind.step.lr<- step(High.Wage.Ind.lr)
+summary(High.Wage.Ind.step.lr)
+```
+We update the step function to reach the maximum significance and present the binary logistic regression.
+```{r}
+High.Wage.Ind.step2.lr<- update(High.Wage.Ind.step.lr,~.-Weight.kg)
+summary(High.Wage.Ind.step2.lr)
+plot(High.Wage.Ind.step2.lr)
+```
+So, below is our final equation which is a logarithm,  with p as our probability for High wage Ind.
+##Probability Equation:
+$$log(\frac{p}{1-p})=-44.81938+0.36328 \times \text{Potential}+ 0.20002 \times \text{Age}+ 0.08096\times \text{Physic} +0.10607\times \text{Dribbling.abs}$$
+We use the predict function below to replace in our output's column with the probabilities, transforming it from binary to numerical.Then by viewing my_new_df, I have my final data frame, with all my implementations of my code and the High Wage Ind. column showing the probabilities. Finally, as we can observe, the highest probabilities are the ones who have wage bigger than 8000 because those are the players who are considered as the ones who are highly paid(approximately above 0,7).
+```{r}
+my_new_df$High.Wage.Ind<-predict(High.Wage.Ind.step2.lr, type="response")
+View(my_new_df)
+```
+###References
+1. All labs, seminars and lectures of QDA and Modern Data modules.
+2. https://stackoverflow.com/questions/31026741/group-by-and-filter-data-management-using-dplyr
+3. https://www.tutorialgateway.org/r-abs-function/
+## End of the code
+
+
